@@ -9,8 +9,9 @@
 #include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
-//#include <linux/in.h>
+#include <errno.h>
 #include "libipc.h"
+#include "libpublic.h"
 
 static proc_t proc[MAX_APP_NUM];
 static proc_t myproc;
@@ -48,7 +49,7 @@ int ipc_proc_init(const char*app_name)
 	pfile = fopen(IPC_CONFIG_FILE,"r");
 	if(NULL == pfile)
 	{
-		ipc_printf(IPC_ERROR,"ipc_proc_init fail, fopen config file fail!\n");
+		log_printf(LOG_ERROR,"ipc_proc_init fail, fopen config file fail!\n");
 		return FAIL;
 	}
 	memset(buf,0,sizeof(buf));
@@ -56,19 +57,19 @@ int ipc_proc_init(const char*app_name)
 	{
 		if(i > MAX_APP_NUM)
 		{
-			ipc_printf(IPC_WARNING,"ipc_proc_init fail, config too many apps:max[%d]\n",MAX_APP_NUM);
+			log_printf(LOG_WARNING,"ipc_proc_init fail, config too many apps:max[%d]\n",MAX_APP_NUM);
 			return FAIL;
 		}
 		if((buf[MAX_LINE_SIZE-1] != '\0') && (buf[MAX_LINE_SIZE-1] != '\n'))
 		{
-			ipc_printf(IPC_ERROR,"ipc_proc_init fail, Beyond the size in config file line:%d\n",i);
+			log_printf(LOG_ERROR,"ipc_proc_init fail, Beyond the size in config file line:%d\n",i);
 			return FAIL;
 		}
 		if(OK == is_annotation(buf))
 			continue;
 		if(3 != sscanf(buf,"%s%d%d",proc[i].appname,&(proc[i].port),&(proc[i].flag)))
 		{
-			ipc_printf(IPC_ERROR,"ipc_proc_init fail,Wrong config style in line %d\n",i);
+			log_printf(LOG_ERROR,"ipc_proc_init fail,Wrong config style in line %d\n",i);
 			return FAIL;
 		}
 		proc[i].id = i+1;
@@ -78,7 +79,7 @@ int ipc_proc_init(const char*app_name)
 		i++;
 	}
 	
-	ipc_printf(IPC_MSG,"-appname--port--flag(1/0)--srv_path--cli_path\n",i);
+	log_printf(LOG_MSG,"-appname--port--flag(1/0)--srv_path--cli_path\n",i);
 	
 	/*make sunpath which will by used by unix domain socket*/
 	memset(cmd,0,64);
@@ -90,7 +91,7 @@ int ipc_proc_init(const char*app_name)
 		{
 			sprintf(proc[i].unix_path.srv_path,"%s%s.%d",UNIX_ROOT_PATH,proc[i].appname,proc[i].id);
 			sprintf(proc[i].unix_path.cli_path,"%s%s.%d.cli",UNIX_ROOT_PATH,proc[i].appname,proc[i].id);
-			ipc_printf(IPC_MSG,"-%s--%d--%d--%s--%s\n",
+			log_printf(LOG_MSG,"-%s--%d--%d--%s--%s\n",
 					proc[i].appname,
 					proc[i].port,
 					proc[i].flag,
@@ -109,7 +110,7 @@ int creat_unix_srv_udpsock(proc_t *p)
 	sock = socket(AF_LOCAL,SOCK_DGRAM,0);
 	if(-1 == sock)
 	{
-		ipc_printf(IPC_FAIL,"creat_unix_srv_udpsock socket fail!\n");
+		log_printf(LOG_FAIL,"creat_unix_srv_udpsock socket fail!\n");
 		return FAIL;
 	}
 	unlink(p->unix_path.srv_path);
@@ -117,12 +118,12 @@ int creat_unix_srv_udpsock(proc_t *p)
 	strncpy(seraddr.sun_path,p->unix_path.srv_path,sizeof(seraddr.sun_path));
 	if(-1 == bind(sock,(struct sockaddr*)&seraddr,sizeof(seraddr)))
 	{
-		ipc_printf(IPC_FAIL,"creat_unix_srv_udpsock bind fail!\n");
+		log_printf(LOG_FAIL,"creat_unix_srv_udpsock bind fail!\n");
 		close(sock);
 		return FAIL;
 	}
 	p->unix_sock.srv_sockfd = sock;
-	ipc_printf(IPC_FAIL,"creat_unix_srv_udpsock success!\n");
+	log_printf(LOG_FAIL,"creat_unix_srv_udpsock success!\n");
 	return OK;
 }
 int creat_unix_cli_udpsock(proc_t *p)
@@ -132,7 +133,7 @@ int creat_unix_cli_udpsock(proc_t *p)
 	sock = socket(AF_LOCAL,SOCK_DGRAM,0);
 	if(-1 == sock)
 	{
-		ipc_printf(IPC_FAIL,"creat_unix_cli_udpsock socket fail!\n");
+		log_printf(LOG_FAIL,"creat_unix_cli_udpsock socket fail!\n");
 		return FAIL;
 	}
 	memset(&cliaddr,0,sizeof(cliaddr));
@@ -141,12 +142,12 @@ int creat_unix_cli_udpsock(proc_t *p)
 	strcpy(cliaddr.sun_path,p->unix_path.cli_path);
 	if(-1 == bind(sock,(struct sockaddr*)&cliaddr,sizeof(cliaddr)))
 	{
-		ipc_printf(IPC_FAIL,"creat_unix_cli_udpsock bind fail!\n");
+		log_printf(LOG_FAIL,"creat_unix_cli_udpsock bind fail!\n");
 		close(sock);
 		return FAIL;
 	}
 	p->unix_sock.cli_sockfd = sock;
-	ipc_printf(IPC_FAIL,"creat_unix_cli_udpsock success!\n");
+	log_printf(LOG_FAIL,"creat_unix_cli_udpsock success!\n");
 	return OK;
 }
 void ipc_msg_handle(unsigned char *data,unsigned int len)
@@ -160,12 +161,12 @@ void ipc_msg_handle(unsigned char *data,unsigned int len)
 	data_header_t	data_head;
 	if(NULL == data)
 	{
-		ipc_printf(IPC_ERROR,"ipc_msg_handle recv msg is NULL!\n");
+		log_printf(LOG_ERROR,"ipc_msg_handle recv msg is NULL!\n");
 		return;
 	}
 	if(len < (sizeof(ipc_header_t) + sizeof(data_header_t)))
 	{
-		ipc_printf(IPC_ERROR,"ipc_msg_handle msglen too short!\n");
+		log_printf(LOG_ERROR,"ipc_msg_handle msglen too short!\n");
 		return;
 	}
 	offset = 0;
@@ -182,27 +183,26 @@ void ipc_msg_handle(unsigned char *data,unsigned int len)
 	
 	if(strncmp(ipc_head.version,version,strlen(version)))
 	{
-		ipc_printf(IPC_ERROR,"ipc_msg_handle  sender version[%s] != currunt version[%s] \n",
+		log_printf(LOG_ERROR,"ipc_msg_handle  sender version[%s] != currunt version[%s] \n",
 			ipc_head.version,version);
 		return;
 	}
 	if(len != ipc_head.length)
 	{
-		ipc_printf(IPC_ERROR,"ipc_msg_handle  sender length[%d],recive msglen[%d]\n",
+		log_printf(LOG_ERROR,"ipc_msg_handle  sender length[%d],recive msglen[%d]\n",
 			ipc_head.length,len);
 		return;
 	}
-	ipc_printf(IPC_MSG,"ipc_msg_handle  receive message from:%s,ipc_version:%s,len:%d,headlen:%d,datalen:%d\n",
+	log_printf(LOG_MSG,"ipc_msg_handle  receive message from:%s,ipc_version:%s,len:%d,headlen:%d,datalen:%d\n",
 				data_head.sender,
 				ipc_head.version,
 				len,
 				ipc_head.length,
 				data_head.datalen);
-
 	msg = (unsigned char*)malloc(len - sizeof(ipc_header_t));
 	if(NULL == msg)
 	{
-		ipc_printf(IPC_ERROR,"ipc_msg_handle  malloc fail !\n");
+		log_printf(LOG_ERROR,"ipc_msg_handle  malloc fail !\n");
 		return;
 	}
 	memcpy(msg,&data_head,sizeof(data_header_t));
@@ -232,7 +232,7 @@ void ipc_recvmsg(int fd)
 							(socklen_t*)&addrlen);
 	if(-1 == recvbytecount)
 	{
-		ipc_printf(IPC_ERROR,"ipc_recvmsg recvfrom got error !\n");
+		log_printf(LOG_ERROR,"ipc_recvmsg recvfrom got error !\n");
 		return;
 	}
 	ipc_msg_handle(msgbuf,recvbytecount);
@@ -240,7 +240,7 @@ void ipc_recvmsg(int fd)
 void *ipc_thread(void *arg)
 {
 	
-	ipc_printf(IPC_MSG,"ipc_thread start !\n");
+	log_printf(LOG_MSG,"ipc_thread start !\n");
 	FD_ZERO (&groupfd);
 	static int serfd;
 	serfd = myproc.unix_sock.srv_sockfd;
@@ -249,7 +249,7 @@ void *ipc_thread(void *arg)
 	{
 		if(select(FD_SETSIZE, &groupfd, NULL, NULL, NULL) == -1)
 		{
-			ipc_printf(IPC_ERROR,"ipc_thread select got error!\n");
+			log_printf(LOG_ERROR,"ipc_thread select got error!\n");
 			continue;
 		}
 
@@ -271,13 +271,13 @@ int init_ipc(const char*app_name,ipc_callback func)
 	
 	if(NULL == app_name)
 	{
-		ipc_printf(IPC_ERROR,"init_ipc fail, arg appname is NULL!\n");
+		log_printf(LOG_ERROR,"init_ipc fail, arg appname is NULL!\n");
 		return FAIL;
 	}
 	ret = ipc_proc_init(app_name);
 	if(FAIL == ret)
 	{
-		ipc_printf(IPC_ERROR,"init_ipc , ipc_proc_init fail\n");
+		log_printf(LOG_ERROR,"init_ipc , ipc_proc_init fail\n");
 		return FAIL;
 	}
 	for(loop = 0;loop < MAX_APP_NUM;loop++)
@@ -289,7 +289,7 @@ int init_ipc(const char*app_name,ipc_callback func)
 	}
 	if(loop == MAX_APP_NUM)
 	{
-		ipc_printf(IPC_FAIL,"init_ipc , %s proc not registered in "IPC_CONFIG_FILE"\n",app_name);
+		log_printf(LOG_FAIL,"init_ipc , %s proc not registered in "IPC_CONFIG_FILE"\n",app_name);
 		return FAIL;
 	}
 	
@@ -297,10 +297,10 @@ int init_ipc(const char*app_name,ipc_callback func)
 	if(creat_unix_srv_udpsock(procinfo) &&
 			creat_unix_cli_udpsock(procinfo))
 	{
-		ipc_printf(IPC_FAIL,"init_ipc,create unix udpsock  success!\n");
+		log_printf(LOG_FAIL,"init_ipc,create unix udpsock  success!\n");
 	}else
 	{
-		ipc_printf(IPC_MSG,"init_ipc,create unix udpsock  Fail!\n");
+		log_printf(LOG_MSG,"init_ipc,create unix udpsock  Fail!\n");
 		return FAIL;
 	}
 	
@@ -311,13 +311,13 @@ int init_ipc(const char*app_name,ipc_callback func)
 							(void*)ipc_thread,
 							(void*)NULL))
 	{
-		ipc_printf(IPC_FAIL,"init_ipc,pthread_create fail!\n");
+		log_printf(LOG_FAIL,"init_ipc,pthread_create fail!\n");
 		close(myproc.unix_sock.cli_sockfd);
 		close(myproc.unix_sock.srv_sockfd);
 		return FAIL;
 	}
 	callback_func = func;
-	ipc_printf(IPC_MSG,"init_ipc success!\n");
+	log_printf(LOG_MSG,"init_ipc success!\n");
 	return OK;
 }
 int get_proc_info(proc_t *dst,const char *appname)
@@ -355,7 +355,7 @@ int ipc_send(unsigned char *data,unsigned int datalen,const char*receiver)
 	*/
 	if(FAIL == get_proc_info(&dst_proc,receiver))
 	{
-		ipc_printf(IPC_MSG,"ipc_send can't find the dst proc %s!\n",receiver);
+		log_printf(LOG_MSG,"ipc_send can't find the dst proc %s!\n",receiver);
 		return FAIL;
 	}
 	offset = 0;
@@ -389,41 +389,11 @@ int ipc_send(unsigned char *data,unsigned int datalen,const char*receiver)
 			(socklen_t)addrlen);
 	if(-1 == ret)
 	{
-		ipc_printf(IPC_FAIL,"ipc_send sendto got error!\n");
+		log_printf(LOG_FAIL,"ipc_send sendto got error!\n");
 		free(msg);
 		return FAIL;
 	}
-	ipc_printf(IPC_MSG,"ipc_send send message to %s!\n",receiver);
+	log_printf(LOG_MSG,"ipc_send send message to %s!\n",receiver);
 	free(msg);
 	return OK;
 }
-void susie_proc(unsigned char *msg)
-{
-	data_header_t *head;
-	char recbuf[512];	
-	
-	head = (data_header_t*)msg;
-	memset(recbuf,0,sizeof(recbuf));
-	memcpy(recbuf,msg + sizeof(data_header_t),head->datalen);
-	
-	fprintf(stdout,"susie_proc recvmsg from [%s] len[%d] msg[%s]\n",
-			head->sender,head->datalen,recbuf);
-}
-int main(int argc, char *argv[]) 
-{
-	int ret;
-	char buf[256];
-	ret = init_ipc("susie",susie_proc);
-	if(ret != OK)
-	{
-		ipc_printf(IPC_MSG,"proc[%s]init_ipc fail and exit\n",argv[0]);
-		return 0;
-	}
-	memset(buf,0,256);
-	while(NULL != fgets(buf,sizeof(buf),stdin))
-	{
-		ipc_send(buf,strlen(buf),"piak");
-		memset(buf,0,256);
-	}
-}
-

@@ -1,19 +1,8 @@
 #ifndef __LIB_IPC__
 #define __LIB_IPC__
 
-#define OK				1
-#define	FAIL			0
 #define IS_LOCAL_PROC	1
 #define IS_OTHER_PROC	0
-
-#define  IPC_FAIL    		5
-#define  IPC_ERROR    		4
-#define  IPC_WARNING  		3
-#define  IPC_INFO     		2
-#define  IPC_MSG   			1
-#define ipc_printf(level, format, arg...) do{\
-		syslog(level,format, ##arg);	\
-}while(0)
 
 typedef struct 
 {
