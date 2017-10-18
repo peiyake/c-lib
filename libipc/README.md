@@ -1,8 +1,8 @@
 # c-lib
-##项目需求
+## 项目需求
 +	编写一些接口,隐藏细节,实现进程间通信.
 +	相同接口,实现跨网络进程间通信
-##接口列表
+## 接口列表
 +	`int init_ipc(const char*app_name,ipc_callback func)`
  	
 		/*
@@ -30,7 +30,7 @@
 		 * 1 			发送成功
 		 * */
 
-##使用方法
+## 使用方法
 1.	`git clone git@github.com:peiyake/c-lib.git`
 2.	`cd libipc`
 3.	`cd src && make 	//编译libipc.a静态库等待使用`
@@ -39,7 +39,7 @@
 6.	`./piak				//运行piak`
 7.	两个终端互相输入,查看进程通信效果
 
-##配置文件
+## 配置文件
 **libipc.conf**
 
 +	创建配置文件`/etc/libipc.conf`,也可以修改源码修改配置文件存储路径.
@@ -56,7 +56,7 @@ port:跨网络的进程需要配置所用的端口号
 
 flag:是否本机进程,1 本机进程;0 非本机进程
 
-##例程
+## 例程
 +	**本机进程susie:**
 
 		#include <stdio.h>
