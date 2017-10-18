@@ -262,6 +262,17 @@ void *ipc_thread(void *arg)
 	
 	return NULL;
 }
+/*
+ * 函数名称:init_ipc
+ * 函数功能:使用本libipc必须首先调用此函数,用于
+ * 初始化一些通信接口
+ * 参数说明:
+ * app_name 	进程名,一个字符串
+ * func  		收到消息后的回调函数
+ * 返回值  :
+ * 0 			初始化失败
+ * 1 			初始化成功
+ * */
 int init_ipc(const char*app_name,ipc_callback func)
 {
 	int	ret;
@@ -333,6 +344,17 @@ int get_proc_info(proc_t *dst,const char *appname)
 	}
 	return FAIL;
 }
+/*
+ * 函数名称:ipc_send
+ * 函数功能:消息发送接口函数
+ * 参数说明:
+ * data 		消息体指针
+ * datalen  	消息体长度
+ * receiver		接收者
+ * 返回值  :
+ * 0 			发送失败
+ * 1 			发送成功
+ * */
 int ipc_send(unsigned char *data,unsigned int datalen,const char*receiver)
 {
 	ipc_header_t 	ipc_header;

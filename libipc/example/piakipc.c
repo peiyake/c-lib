@@ -11,8 +11,7 @@ void piak_proc(unsigned char *msg)
 	memset(recbuf,0,sizeof(recbuf));
 	memcpy(recbuf,msg + sizeof(data_header_t),head->datalen);
 	
-	fprintf(stdout,"susie_proc recvmsg from [%s] len[%d] msg[%s]\n",
-			head->sender,head->datalen,recbuf);
+	fprintf(stdout,"%-10s:%s\n",head->sender,recbuf);
 }
 int main(int argc, char *argv[])
 {
@@ -27,7 +26,7 @@ int main(int argc, char *argv[])
 	memset(buf,0,256);
 	while(NULL != fgets(buf,sizeof(buf),stdin))
 	{
-		ipc_send(buf,strlen(buf),"susie");
+		ipc_send(buf,strlen(buf)-1,"susie");
 		memset(buf,0,256);
 	}
 }
